@@ -131,7 +131,7 @@ let actChart, scoreChart;
 
 // ── Auth helpers ────────────────────────────────────────────────────────────
 function getAuthHeader() {
-  const pass = sessionStorage.getItem('kd_pass');
+  const pass = localStorage.getItem('kd_pass');
   if (!pass) return null;
   return 'Basic ' + btoa(AUTH_USER + ':' + pass);
 }
@@ -264,7 +264,7 @@ async function load() {
   try {
     var r = await fetch(STATS_URL, { headers: { 'Authorization': auth } });
     if (r.status === 401) {
-      sessionStorage.removeItem('kd_pass');
+      localStorage.removeItem('kd_pass');
       showLogin();
       return;
     }
@@ -290,7 +290,7 @@ document.getElementById('login-btn').addEventListener('click', async function() 
     }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     // Success — save and render
-    sessionStorage.setItem('kd_pass', pass);
+    localStorage.setItem('kd_pass', pass);
     document.getElementById('login-err').style.display = 'none';
     hideLogin();
     render(await r.json());
