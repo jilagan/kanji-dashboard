@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanji Mentor &mdash; Live Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; color: #1d1d1f; }
+  header { background: #fff; border-bottom: 1px solid #e5e5ea; padding: 18px 32px; display: flex; align-items: center; gap: 14px; }
+  .logo { font-size: 28px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header p { font-size: 12px; color: #86868b; margin-top: 2px; }
+  #updated { font-size: 11px; color: #86868b; margin-left: auto; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #34c759; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .container { max-width: 1120px; margin: 0 auto; padding: 24px 20px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+  .stat-card { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .stat-card .lbl { font-size: 11px; color: #86868b; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-card .val { font-size: 34px; font-weight: 700; margin: 5px 0 2px; }
+  .stat-card .sub { font-size: 11px; color: #86868b; }
+  .red{color:#ff3b30} .green{color:#34c759} .blue{color:#007aff} .orange{color:#ff9500}
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .three-col { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .card { background:#fff; border-radius:14px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .card h2 { font-size:14px; font-weight:600; margin-bottom:14px; }
+  .card h2 span { font-size:11px; color:#86868b; font-weight:400; margin-left:5px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-size:10px; font-weight:600; color:#86868b; text-transform:uppercase; letter-spacing:.4px; padding:0 0 8px; border-bottom:1px solid #f2f2f7; }
+  td { padding:9px 0; border-bottom:1px solid #f2f2f7; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  .kanji-cell { font-size:20px; font-family:'Hiragino Mincho ProN','Yu Mincho',serif; width:32px; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+  .pill-hi  { background:#d1fae5; color:#065f46; }
+  .pill-mid { background:#fef3c7; color:#92400e; }
+  .pill-lo  { background:#fee2e2; color:#991b1b; }
+  .av { width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; margin-right:7px; }
+  .av-0{background:#ff3b30} .av-1{background:#007aff} .av-2{background:#34c759} .av-3{background:#ff9500} .av-4{background:#5856d6}
+  .user-cell { display:flex; align-items:center; }
+  .bar-row { display:flex; align-items:center; margin-bottom:9px; }
+  .bar-label { font-size:12px; width:100px; }
+  .bar-wrap { background:#f2f2f7; border-radius:4px; height:6px; flex:1; margin:0 8px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:4px; }
+  .bar-pct { font-size:11px; color:#86868b; width:34px; text-align:right; }
+  .chart-wrap { position:relative; height:170px; }
+  .note { font-size:11px; color:#86868b; font-style:italic; margin-top:10px; }
+  .q-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .q-item { background:#f5f5f7; border-radius:10px; padding:10px 12px; }
+  .q-item .ql { font-size:10px; color:#86868b; margin-bottom:3px; }
+  .q-item .qv { font-size:13px; font-weight:600; }
+  .qg{color:#34c759} .qw{color:#ff9500}
+  @media(max-width:700px){.stats-grid{grid-template-columns:repeat(2,1fr)}.two-col,.three-col{grid-template-columns:1fr}}
+  #error { display:none; background:#fee2e2; color:#991b1b; padding:12px 20px; border-radius:10px; margin-bottom:16px; font-size:13px; }
+  /* Login overlay */
+  #login-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:999; }
+  #login-box { background:#fff; border-radius:18px; padding:36px 32px 28px; width:340px; box-shadow:0 12px 40px rgba(0,0,0,.2); text-align:center; }
+  #login-box h2 { font-size:18px; margin-bottom:4px; }
+  #login-box p { font-size:12px; color:#86868b; margin-bottom:20px; }
+  #login-box input { width:100%; padding:10px 14px; border:1px solid #e5e5ea; border-radius:8px; font-size:14px; margin-bottom:10px; outline:none; }
+  #login-box input:focus { border-color:#007aff; }
+  #login-box button { width:100%; padding:10px; background:#007aff; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  #login-box button:hover { background:#005ec4; }
+  #login-err { color:#ff3b30; font-size:12px; margin-top:8px; display:none; }
+</style>
+</head>
+<body>
+
+<!-- Login overlay (shown if no saved session) -->
+<div id="login-overlay" style="display:none">
+  <div id="login-box">
+    <div style="font-size:36px; margin-bottom:8px;">&#28450;</div>
+    <h2>Kanji Mentor Dashboard</h2>
+    <p>Enter credentials to view beta stats</p>
+    <input id="login-pass" type="password" placeholder="Password" autofocus>
+    <button id="login-btn">Sign In</button>
+    <div id="login-err">Invalid password. Try again.</div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">&#28450;</div>
+  <div><h1>Kanji Mentor</h1><p>Live Beta Dashboard</p></div>
+  <div id="updated"><span class="dot"></span>Loading&hellip;</div>
+</header>
+<div class="container">
+  <div id="error"></div>
+  <div class="stats-grid" id="statCards">
+    <div class="stat-card"><div class="lbl">Users</div><div class="val red">&mdash;</div><div class="sub">&mdash;</div></div>
+    <div class="stat-card"><div class="lbl">Attempts</div><div class="val blue">&mdash;</div><div class="sub">&mdash;</div></div>
+    <div class="stat-card"><div class="lbl">Avg Score</div><div class="val orange">&mdash;</div><div class="sub">&mdash;</div></div>
+    <div class="stat-card"><div class="lbl">SRS Cards</div><div class="val green">&mdash;</div><div class="sub">&mdash;</div></div>
+  </div>
+  <div class="two-col">
+    <div class="card"><h2>Daily Attempts <span>last 14 days</span></h2><div class="chart-wrap"><canvas id="actChart"></canvas></div></div>
+    <div class="card"><h2>Score Distribution <span>0&ndash;10</span></h2><div class="chart-wrap"><canvas id="scoreChart"></canvas></div></div>
+  </div>
+  <div class="three-col">
+    <div class="card">
+      <h2>Users</h2>
+      <table><thead><tr><th>User</th><th>Att.</th><th>Avg</th><th>SRS</th><th>Due</th><th>Joined</th><th>Last Seen</th><th>Last Attempt</th></tr></thead>
+      <tbody id="userTable"></tbody></table>
+      <p class="note" id="userNote"></p>
+    </div>
+    <div class="card">
+      <h2>Top Kanji <span>by attempts</span></h2>
+      <table><thead><tr><th></th><th>Meaning</th><th>Att.</th><th>Avg</th></tr></thead>
+      <tbody id="kanjiTable"></tbody></table>
+    </div>
+  </div>
+  <div class="two-col">
+    <div class="card"><h2>Writing Quality</h2><div id="qualityBars"></div></div>
+    <div class="card"><h2>Engagement</h2><div class="q-grid" id="engGrid"></div></div>
+  </div>
+</div>
+<script>
+const STATS_URL = 'https://fltusorahxjvsdjaspgy.supabase.co/functions/v1/dashboard';
+const AUTH_USER = 'kanji';
+
+const KANJI_MEANINGS = {
+  '\u4e03':'seven','\u4e00':'one','\u516b':'eight','\u4e5d':'nine',
+  '\u4eba':'person','\u53e3':'mouth','\u4e07':'ten-thousand','\u4e8c':'two',
+  '\u4e0a':'above','\u4e0b':'below','\u4e09':'three','\u529b':'power',
+  '\u5341':'ten','\u5343':'thousand','\u5165':'enter','\u571f':'earth',
+  '\u5b50':'child','\u65e5':'sun/day','\u6708':'moon','\u706b':'fire',
+  '\u6c34':'water','\u6728':'tree','\u91d1':'gold'
+};
+
+let actChart, scoreChart;
+
+// ── Auth helpers ────────────────────────────────────────────────────────────
+function getAuthHeader() {
+  const pass = sessionStorage.getItem('kd_pass');
+  if (!pass) return null;
+  return 'Basic ' + btoa(AUTH_USER + ':' + pass);
+}
+
+function showLogin() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('login-pass').focus();
+}
+
+function hideLogin() {
+  document.getElementById('login-overlay').style.display = 'none';
+}
+
+// ── Rendering ───────────────────────────────────────────────────────────────
+function fmt(iso) {
+  if (!iso) return '\u2014';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function scorePill(s) {
+  const cls = s >= 7 ? 'pill-hi' : s >= 5 ? 'pill-mid' : 'pill-lo';
+  return '<span class="pill ' + cls + '">' + s.toFixed(1) + '</span>';
+}
+
+function render(data) {
+  document.getElementById('updated').innerHTML =
+    '<span class="dot"></span>Updated ' + new Date(data.updatedAt).toLocaleTimeString();
+
+  const t = data.totals;
+  const cards = document.querySelectorAll('#statCards .stat-card');
+  cards[0].innerHTML = '<div class="lbl">Users</div><div class="val red">' + t.users + '</div><div class="sub">' + t.externalUsers + ' with activity</div>';
+  cards[1].innerHTML = '<div class="lbl">Attempts</div><div class="val blue">' + t.attempts + '</div><div class="sub">' + t.uniqueKanji + ' unique kanji</div>';
+  cards[2].innerHTML = '<div class="lbl">Avg Score</div><div class="val orange">' + t.avgScore + '<span style="font-size:18px">/10</span></div><div class="sub">across all attempts</div>';
+  cards[3].innerHTML = '<div class="lbl">SRS Cards</div><div class="val green">' + t.srsCards + '</div><div class="sub">' + t.srsCardsDue + ' due today</div>';
+
+  const labels = data.dailyActivity.map(function(d) {
+    var dt = new Date(d.date + 'T12:00:00');
+    return dt.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+  });
+  if (actChart) actChart.destroy();
+  actChart = new Chart(document.getElementById('actChart'), {
+    type:'bar',
+    data:{ labels: labels, datasets:[
+      { label:'Attempts', data:data.dailyActivity.map(function(d){return d.attempts}), backgroundColor:'rgba(255,59,48,.15)', borderColor:'#ff3b30', borderWidth:2, borderRadius:5 },
+      { label:'Users', data:data.dailyActivity.map(function(d){return d.users}), type:'line', borderColor:'#007aff', backgroundColor:'transparent', borderWidth:2, pointBackgroundColor:'#007aff', pointRadius:3, yAxisID:'y2', tension:.3 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#f2f2f7'},ticks:{font:{size:10},stepSize:5},beginAtZero:true},
+        y2:{position:'right',grid:{display:false},ticks:{font:{size:10},stepSize:1},beginAtZero:true,max:5} } }
+  });
+
+  var scoreColors = data.scoreDist.map(function(_,i) {
+    return i>=8?'rgba(52,199,89,.7)':i>=6?'rgba(255,149,0,.7)':'rgba(255,59,48,.7)';
+  });
+  if (scoreChart) scoreChart.destroy();
+  scoreChart = new Chart(document.getElementById('scoreChart'), {
+    type:'bar',
+    data:{ labels:['0','1','2','3','4','5','6','7','8','9','10'],
+      datasets:[{data:data.scoreDist,backgroundColor:scoreColors,borderRadius:4}]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{font:{size:10}}},
+        y:{grid:{color:'#f2f2f7'},ticks:{font:{size:10},stepSize:5},beginAtZero:true} } }
+  });
+
+  var avColors = ['av-0','av-1','av-2','av-3','av-4'];
+  document.getElementById('userTable').innerHTML = data.userRows.map(function(u, i) {
+    return '<tr>' +
+      '<td><div class="user-cell"><div class="av ' + avColors[i%5] + '">' + u.initials + '</div>' +
+        '<span>' + u.email.split('@')[0] + '<br><small style="color:' + (u.isPro?'#34c759':'#86868b') + ';font-weight:600">' + (u.isPro?'\u2605 pro':'') + '</small></span></div></td>' +
+      '<td>' + u.attempts + '</td>' +
+      '<td>' + scorePill(u.avgScore) + '</td>' +
+      '<td>' + u.srs.total + '</td>' +
+      '<td>' + u.srs.due + '</td>' +
+      '<td>' + fmt(u.joined) + '</td>' +
+      '<td>' + fmt(u.lastSeen) + '</td>' +
+      '<td>' + fmt(u.lastAttempt) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('kanjiTable').innerHTML = data.topKanji.map(function(k) {
+    return '<tr>' +
+      '<td class="kanji-cell">' + k.kanji + '</td>' +
+      '<td style="color:#86868b;font-size:12px">' + (KANJI_MEANINGS[k.kanji]||'') + '</td>' +
+      '<td>' + k.count + '</td>' +
+      '<td>' + scorePill(k.avg) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var q = data.quality;
+  var soTotal = q.strokeOrder.correct + q.strokeOrder.incorrect + q.strokeOrder.mostly || 1;
+  var scTotal = q.strokeCount.correct + q.strokeCount.incorrect || 1;
+  var spTotal = q.spacing.good + q.spacing.too_loose + q.spacing.too_tight || 1;
+  var prTotal = q.proportions.good + q.proportions.disproportionate || 1;
+  var rbTotal = q.radicalBalance.balanced + q.radicalBalance.off_balance || 1;
+  var cgTotal = q.centerOfGravity.centered + q.centerOfGravity.shifted || 1;
+  var bars = [
+    ['Stroke order',    q.strokeOrder.correct / soTotal, '#34c759'],
+    ['Stroke count',    q.strokeCount.correct / scTotal, '#34c759'],
+    ['Spacing',         q.spacing.good / spTotal,        '#34c759'],
+    ['Proportions',     q.proportions.good / prTotal,    '#ff9500'],
+    ['Radical balance', q.radicalBalance.balanced / rbTotal, '#ff9500'],
+    ['Center gravity',  q.centerOfGravity.centered / cgTotal, '#ff9500'],
+  ];
+  document.getElementById('qualityBars').innerHTML = bars.map(function(b) {
+    var lbl = b[0], pct = b[1], col = b[2];
+    return '<div class="bar-row">' +
+      '<span class="bar-label">' + lbl + '</span>' +
+      '<div class="bar-wrap"><div class="bar-fill" style="width:' + Math.round(pct*100) + '%;background:' + col + '"></div></div>' +
+      '<span class="bar-pct" style="color:' + col + '">' + Math.round(pct*100) + '%</span>' +
+    '</div>';
+  }).join('');
+
+  var mcTotal   = data.userRows.reduce(function(s,u){return s+u.meaningChecks.total},0);
+  var mcCorrect = data.userRows.reduce(function(s,u){return s+u.meaningChecks.correct},0);
+  document.getElementById('engGrid').innerHTML =
+    '<div class="q-item"><div class="ql">Meaning checks</div><div class="qv">' + mcTotal + '</div></div>' +
+    '<div class="q-item"><div class="ql">MC accuracy</div><div class="qv qg">' + (mcTotal?Math.round(mcCorrect/mcTotal*100)+'%':'\u2014') + '</div></div>' +
+    '<div class="q-item"><div class="ql">Feedback flags</div><div class="qv qg">0</div></div>' +
+    '<div class="q-item"><div class="ql">Client errors</div><div class="qv qg">0</div></div>' +
+    '<div class="q-item"><div class="ql">SRS due today</div><div class="qv qw">' + t.srsCardsDue + '</div></div>' +
+    '<div class="q-item"><div class="ql">Unique kanji</div><div class="qv">' + t.uniqueKanji + '</div></div>';
+}
+
+// ── Data fetching ───────────────────────────────────────────────────────────
+async function load() {
+  var auth = getAuthHeader();
+  if (!auth) { showLogin(); return; }
+  try {
+    var r = await fetch(STATS_URL, { headers: { 'Authorization': auth } });
+    if (r.status === 401) {
+      sessionStorage.removeItem('kd_pass');
+      showLogin();
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    document.getElementById('error').style.display = 'none';
+    render(await r.json());
+  } catch(e) {
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('error').textContent = 'Error loading stats: ' + e.message;
+  }
+}
+
+// ── Login handler ───────────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', async function() {
+  var pass = document.getElementById('login-pass').value;
+  if (!pass) return;
+  var auth = 'Basic ' + btoa(AUTH_USER + ':' + pass);
+  try {
+    var r = await fetch(STATS_URL, { headers: { 'Authorization': auth } });
+    if (r.status === 401) {
+      document.getElementById('login-err').style.display = 'block';
+      return;
+    }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // Success — save and render
+    sessionStorage.setItem('kd_pass', pass);
+    document.getElementById('login-err').style.display = 'none';
+    hideLogin();
+    render(await r.json());
+  } catch(e) {
+    document.getElementById('login-err').textContent = 'Error: ' + e.message;
+    document.getElementById('login-err').style.display = 'block';
+  }
+});
+document.getElementById('login-pass').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') document.getElementById('login-btn').click();
+});
+
+// ── Boot ────────────────────────────────────────────────────────────────────
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
