@@ -376,8 +376,14 @@ function render(data) {
       '<td>' + pctPill(rdRate) + '</td>' +
       '<td>' + pctPill(u.mcAccuracy) + '</td>' +
       '<td>' + u.yoji.total + '</td>' +
-      '<td style="font-size:12px;color:#86868b">' + (u.device ? u.device.model + '<br>iOS ' + u.device.ios : '—') + '</td>' +
-      '<td style="font-size:14px">' + (u.device ? u.device.flag + ' ' + (u.device.region || '—') : '—') + '</td>' +
+      '<td style="font-size:11px;color:#86868b;line-height:1.6">' +
+        (u.devices && u.devices.length
+          ? u.devices.map(d => d.model + ' · iOS ' + d.ios).join('<br>')
+          : '—') + '</td>' +
+      '<td style="font-size:13px;line-height:1.6">' +
+        (u.devices && u.devices.length
+          ? [...new Set(u.devices.map(d => d.flag + ' ' + (d.region || '—')))].join('<br>')
+          : '—') + '</td>' +
       '<td>' + fmt(u.joined) + '</td>' +
       '<td>' + fmt(u.lastSeen) + '</td>' +
     '</tr>';
