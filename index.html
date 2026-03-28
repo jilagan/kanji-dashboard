@@ -128,6 +128,28 @@
 <div class="container">
   <div id="error"></div>
 
+  <!-- ── Activation Funnel ── -->
+  <div class="section-label" style="color:#ff3b30">🔴 Activation Funnel</div>
+  <div class="stats-grid" id="funnelCards">
+    <div class="stat-card"><div class="lbl">Signups</div><div class="val">&mdash;</div><div class="sub">&mdash;</div></div>
+    <div class="stat-card"><div class="lbl">Activated</div><div class="val">&mdash;</div><div class="sub">drew ≥1 kanji</div></div>
+    <div class="stat-card"><div class="lbl">Retained D2+</div><div class="val">&mdash;</div><div class="sub">came back day 2+</div></div>
+    <div class="stat-card"><div class="lbl">Retained D7+</div><div class="val">&mdash;</div><div class="sub">active 7+ days</div></div>
+  </div>
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="card">
+      <h2>Cohort Activation <span>last 14 days</span></h2>
+      <table>
+        <thead><tr><th>Date</th><th>Signups</th><th>Activated</th><th>Rate</th><th>Retained</th></tr></thead>
+        <tbody id="cohortTable"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Funnel Health</h2>
+      <div id="funnelDetails" style="font-size:13px;line-height:2"></div>
+    </div>
+  </div>
+
   <!-- ── Core stats ── -->
   <div class="section-label">Overview</div>
   <div class="stats-grid" id="statCards">
@@ -308,6 +330,34 @@ function render(data) {
     '<span class="dot"></span>Updated ' + new Date(data.updatedAt).toLocaleTimeString();
 
   const t = data.totals;
+
+  // ── Activation Funnel ──
+  if (data.funnel) {
+    const f = data.funnel;
+    const fc = document.querySelectorAll('#funnelCards .stat-card');
+    const rateColor = (r) => r < 20 ? 'red' : r < 50 ? 'orange' : 'green';
+    fc[0].innerHTML = '<div class="lbl">Signups</div><div class="val">' + f.totalSignups + '</div><div class="sub">all time</div>';
+    fc[1].innerHTML = '<div class="lbl">Activated</div><div class="val ' + rateColor(f.activationRate) + '">' + f.activated + '</div><div class="sub">' + f.activationRate + '% of signups</div>';
+    fc[2].innerHTML = '<div class="lbl">Retained D2+</div><div class="val ' + rateColor(f.retainedD2Rate) + '">' + f.retainedD2 + '</div><div class="sub">' + f.retainedD2Rate + '% of activated</div>';
+    fc[3].innerHTML = '<div class="lbl">Retained D7+</div><div class="val ' + rateColor(f.retainedD7Rate) + '">' + f.retainedD7 + '</div><div class="sub">' + f.retainedD7Rate + '% of activated</div>';
+
+    // Cohort table
+    document.getElementById('cohortTable').innerHTML = f.cohorts.map(c =>
+      '<tr><td>' + c.date + '</td><td>' + c.signups + '</td><td>' + c.activated + '</td>' +
+      '<td style="color:' + (c.activationRate < 30 ? '#ff3b30' : c.activationRate < 60 ? '#ff9500' : '#34c759') + ';font-weight:600">' + c.activationRate + '%</td>' +
+      '<td>' + c.retained + ' (' + c.retentionRate + '%)</td></tr>'
+    ).join('');
+
+    // Funnel details
+    document.getElementById('funnelDetails').innerHTML =
+      '📥 <b>' + f.totalSignups + '</b> total signups<br>' +
+      '✏️ <b>' + f.activated + '</b> drew at least 1 kanji (' + f.activationRate + '%)<br>' +
+      '🔄 <b>' + f.retainedD2 + '</b> came back day 2+ (' + f.retainedD2Rate + '% of activated)<br>' +
+      '🔥 <b>' + f.retainedD7 + '</b> active 7+ days (' + f.retainedD7Rate + '%)<br>' +
+      '💀 <b>' + f.neverActivated + '</b> signed up but never drew<br>' +
+      (f.medianHoursToFirstAttempt !== null ? '⏱️ Median time to first draw: <b>' + f.medianHoursToFirstAttempt + 'h</b><br>' : '') +
+      '<br><span style="color:#86868b">Last 7 days: ' + f.recentSignups + ' signups → ' + f.recentActivated + ' activated, ' + f.recentDropoffs + ' dropped</span>';
+  }
 
   // ── Overview stat cards ──
   const cards = document.querySelectorAll('#statCards .stat-card');
